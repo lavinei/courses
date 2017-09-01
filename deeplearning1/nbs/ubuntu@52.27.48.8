@@ -1,0 +1,336 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The goal of this is to successfully complete all the steps necessary to enter the Dogs & Cats Kaggle competition, from start to finish. I am also aiming to actually achieve a rather high level in the competition. So the steps are:\n",
+    "\n",
+    "1. Download the data from Kaggle\n",
+    "2. Use BASH commands to put the data into the appropriate folders (train, valid, sample, test)\n",
+    "3. Import the data into a NUMPY array and save it\n",
+    "4. Import the VGG model\n",
+    "5. Finetune the VGG model with our data\n",
+    "6. Save the model weights\n",
+    "7. Create the predictions using the finetuned VGG data\n",
+    "8. \"trim\" the probabilities, so none of the probabilities are too close to 0 or 1, which is heavily penalized\n",
+    "9. Save the predictions as a downloadable file, which I can then manually submit to Kaggle"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Download the data from Kaggle"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "u'/Users/isaaclavine/fastai/courses/deeplearning1/nbs'"
+      ]
+     },
+     "execution_count": 2,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "%pwd"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import os, sys\n",
+    "cwd = os.getcwd()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "#Allow relative imports to directories above lesson1/\n",
+    "sys.path.insert(1, os.path.join(sys.path[0], '..'))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 32,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Importing modules\n",
+    "from shutil import copyfile\n",
+    "from utils import *\n",
+    "import keras\n",
+    "from vgg16 import Vgg16"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "## Just having a filler here from now - we will use the Kaggle CLI\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Use BASH commands to put the data into the appropriate folders (train, valid, sample, test)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "## Again this is a filler - already have everything in the appropriate folder\n",
+    "## But when I do this in the future, I think it'd be better to use Python commands to randomize the sample\n",
+    "\n",
+    "DATA_HOME_DIR = cwd+'/data/redux'\n",
+    "if not os.path.exists(DATA_HOME_DIR): os.mkdir(DATA_HOME_DIR)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "/Users/isaaclavine/fastai/courses/deeplearning1/nbs/data/redux\n"
+     ]
+    }
+   ],
+   "source": [
+    "%cd $DATA_HOME_DIR"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "/Users/isaaclavine/fastai/courses/deeplearning1/nbs/data/redux\n"
+     ]
+    }
+   ],
+   "source": [
+    "#Create directories\n",
+    "%cd $DATA_HOME_DIR\n",
+    "%mkdir valid\n",
+    "%mkdir results\n",
+    "%mkdir test\n",
+    "%mkdir train\n",
+    "%mkdir -p sample/train\n",
+    "%mkdir -p sample/test\n",
+    "%mkdir -p sample/valid\n",
+    "%mkdir -p sample/results\n",
+    "%mkdir -p test/unknown"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "/Users/isaaclavine/fastai/courses/deeplearning1/nbs/data/redux/train\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Now going into the train folder\n",
+    "# Going to MOVE some files into the validation folder\n",
+    "# Going to COPY some files into the samples folder\n",
+    "%cd $DATA_HOME_DIR/train"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 30,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "g = glob('*.jpg')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 31,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[]"
+      ]
+     },
+     "execution_count": 31,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "shuf = np.random.permutation(g)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "# This will move images to the validation folder\n",
+    "for i in xrange(2000): os.rename(shuf[i], DATA_HOME_DIR + '/valid/' + shuf[i])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "# This will copy images to the sample folder\n",
+    "\n",
+    "shuf = np.random.permutation(g)\n",
+    "for i in xrange(200): os.copyfile(shuf[i], DATA_HOME_DIR + '/sample/train' + shuf[i])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Import the data into a NUMPY array and save it"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "batches = "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Import the VGG model"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Finetune the VGG model with our data"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Save the model weights"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Create the predictions using the finetuned VGG Data"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Trim the probabilities so that none are too close to 0 or 1"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Save the predictions as a downloadable file"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 2",
+   "language": "python",
+   "name": "python2"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 2
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython2",
+   "version": "2.7.13"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
